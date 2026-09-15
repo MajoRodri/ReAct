@@ -1,0 +1,364 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motor de Triaje Escolar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/static/logo.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
+  <link rel="stylesheet" href="/static/style.css?v=3" />
+</head>
+<body>
+
+<!-- ── Modal: primera sesión ─────────────────────────────── -->
+<div class="modal-overlay hidden" id="first-login-modal">
+  <div class="modal-box">
+    <i class="fa-solid fa-key" style="font-size:2rem;margin-bottom:12px;display:block;text-align:center;color:var(--blue-600)"></i>
+    <h2>Bienvenido a tu primera sesión</h2>
+    <p class="modal-sub">Tienes una contraseña temporal. Te recomendamos cambiarla ahora, pero puedes hacerlo más tarde desde tu perfil.</p>
+    <div id="modal-alert" class="modal-alert"></div>
+    <div class="modal-field">
+      <label>Contraseña temporal (actual)</label>
+      <input id="modal-cur-pwd"  type="password" placeholder="••••••••" />
+    </div>
+    <div class="modal-field">
+      <label>Nueva contraseña</label>
+      <input id="modal-new-pwd"  type="password" placeholder="Mínimo 8 caracteres" />
+    </div>
+    <div class="modal-field">
+      <label>Confirmar nueva contraseña</label>
+      <input id="modal-conf-pwd" type="password" placeholder="••••••••" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="modalChangePassword()">Cambiar ahora</button>
+      <button class="btn btn-ghost"   onclick="dismissFirstLogin()">Lo haré más tarde</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <img src="/static/logo.png" alt="Logo" class="sidebar-logo" />
+    </div>
+    <div class="sidebar-section-label">Navegación</div>
+    <div class="sidebar-nav" id="sidebar-nav"></div>
+    <div class="sidebar-user">
+      <div class="sidebar-user-btn" onclick="goToProfile()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="u-name" id="u-name">—</div>
+          <div class="u-role" id="u-role">—</div>
+        </div>
+      </div>
+      <button class="btn-logout-icon" onclick="logout()" title="Cerrar sesión"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+  </nav>
+
+  <!-- ── Cuerpo ────────────────────────────────────────────── -->
+  <div class="app-body">
+
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+    </header>
+
+    <main class="content">
+
+      <!-- Dashboard -->
+      <div class="page" id="page-home">
+        <div class="welcome-banner">
+          <div class="wb-text">
+            <h2 id="welcome-title">Bienvenido</h2>
+            <p>Panel de control del Motor de Triaje Escolar</p>
+            <div class="wb-pills">
+              <span class="wb-pill" id="wb-role-pill">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="sc-icon sc-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="sc-num" id="stat-total">—</div><div class="sc-label">Total incidencias</div></div>
+          <div class="stat-card"><div class="sc-icon sc-yellow"><i class="fa-solid fa-clock"></i></div><div class="sc-num" id="stat-pending">—</div><div class="sc-label">Pendientes</div></div>
+          <div class="stat-card"><div class="sc-icon sc-green"><i class="fa-solid fa-circle-check"></i></div><div class="sc-num" id="stat-confirmed">—</div><div class="sc-label">Confirmadas</div></div>
+          <div class="stat-card"><div class="sc-icon sc-red"><i class="fa-solid fa-circle-exclamation"></i></div><div class="sc-num" id="stat-critical">—</div><div class="sc-label">Urgencia crítica</div></div>
+        </div>
+
+        <!-- Guía de uso — solo visible para profesorado -->
+        <div class="card profesor-guide" id="profesor-guide" style="display:none">
+          <div class="card-title"><i class="fa-solid fa-circle-info"></i> Cómo registrar una incidencia</div>
+          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:20px">
+            Como docente puedes reportar incidencias de convivencia. La IA las clasifica automáticamente y las deriva al departamento adecuado para su gestión.
+          </p>
+          <div class="guide-steps">
+            <div class="guide-step">
+              <div class="gs-num">1</div>
+              <div>
+                <strong>Ve a "Nuevo Caso"</strong> y describe la incidencia con el mayor detalle posible: qué ocurrió, cuándo, quiénes estaban implicados y si hubo testigos. Cuanta más información, mejor clasifica la IA.
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="gs-num">2</div>
+              <div>
+                <strong>Dos modelos de IA analizan simultáneamente</strong> el texto y proponen una categoría, nivel de urgencia y departamento al que derivar el caso.
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="gs-num">3</div>
+              <div>
+                <strong>Selecciona la clasificación</strong> que te parezca más precisa entre las dos propuestas y confírmala. El caso quedará registrado y pendiente de validación por el departamento.
+              </div>
+            </div>
+            <div class="guide-step">
+              <div class="gs-num">4</div>
+              <div>
+                <strong>En "Incidencias"</strong> puedes consultar el estado de todo lo que has reportado. Cuando el departamento lo valide, aparecerá como <em>Confirmada</em>.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-chart-line"></i> Actividad reciente</div>
+          <div id="recent-list"><p style="color:var(--gray-400);font-size:.88rem">Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Nuevo Caso -->
+      <div class="page" id="page-triage">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-file-pen"></i> Nuevo Caso</div>
+          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:16px">
+            Ambos modelos analizarán simultáneamente. Selecciona la clasificación que te parezca más precisa.
+          </p>
+          <form id="triage-form">
+            <div class="student-lookup-row">
+              <input type="text" id="student-code-input" placeholder="Código de alumno (ej. EST2026001)" maxlength="20" autocomplete="off" />
+              <button type="button" class="btn btn-secondary" id="lookup-btn"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+            </div>
+            <div id="student-badge" style="display:none"></div>
+            <textarea id="triage-text" placeholder="Describe la incidencia con el mayor detalle posible..." disabled></textarea>
+            <button class="btn btn-primary" id="triage-btn" type="submit" disabled><i class="fa-solid fa-magnifying-glass"></i> Analizar con IA</button>
+          </form>
+          <div class="spinner-wrap" id="triage-spinner">
+            <div class="spinner"></div><span>Consultando LLaMA local y Qwen 27B (Groq) simultáneamente...</span>
+          </div>
+        </div>
+        <div class="alert" id="triage-alert"></div>
+        <div id="triage-result"></div>
+      </div>
+
+      <!-- Bandeja de entrada -->
+      <div class="page" id="page-inbox">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-inbox"></i> Bandeja de Entrada</div>
+          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:16px">
+            Incidencias asignadas a tu departamento pendientes de acción.
+          </p>
+          <div id="inbox-container"><p style="color:var(--gray-400)">Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Registro de incidencias -->
+      <div class="page" id="page-incidents">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-clipboard-list"></i> Registro de Incidencias</div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>#</th><th>Categoría</th><th>Urgencia</th>
+                  <th>Departamento</th><th>Resumen</th><th>Reportado por</th>
+                  <th>Fecha</th><th>Estado</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="incidents-body">
+                <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agenda -->
+      <div class="page" id="page-calendar">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-calendar-days"></i> Agenda de Seguimientos</div>
+          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:16px">
+            Citas programadas para tu departamento.
+          </p>
+          <div id="calendar-list"><p style="color:var(--gray-400)">Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Instituciones -->
+      <div class="page" id="page-admin">
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between;align-items:center">
+            <span><i class="fa-solid fa-school"></i> Instituciones</span>
+            <button class="btn btn-primary btn-sm" onclick="showCreateInstForm()">+ Nueva</button>
+          </div>
+          <div id="create-inst-form" style="display:none;margin-bottom:20px">
+            <div class="form-row">
+              <input type="text" id="new-inst-name" placeholder="Nombre de la institución..." style="flex:1;min-width:220px" />
+              <button class="btn btn-primary btn-sm" onclick="submitCreateInst()">Crear</button>
+              <button class="btn btn-ghost btn-sm"   onclick="hideCreateInstForm()">Cancelar</button>
+            </div>
+            <div id="create-inst-alert" class="modal-alert" style="margin-top:8px"></div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>#</th><th>Nombre</th><th>Código</th><th>Usuarios</th><th>Creada</th><th>Acciones</th></tr>
+              </thead>
+              <tbody id="institutions-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Usuarios -->
+      <div class="page" id="page-admin-users">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-users"></i> Usuarios registrados</div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>#</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Departamento</th><th>Institución</th><th>Registrado</th><th>Acciones</th></tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invitar Admin -->
+      <div class="page" id="page-admin-invite">
+        <div class="card" style="max-width:520px;width:100%;">
+          <div class="card-title"><i class="fa-solid fa-envelope"></i> Invitar administrador</div>
+          <p style="font-size:.85rem;color:var(--gray-600);margin-bottom:20px">
+            Se enviará una contraseña temporal al correo. El nuevo administrador podrá cambiarla en su primer acceso.
+          </p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div class="ps-field" style="margin:0">
+              <label>Nombre</label>
+              <input id="inv-first" type="text" placeholder="Nombre..." />
+            </div>
+            <div class="ps-field" style="margin:0">
+              <label>Apellidos</label>
+              <input id="inv-last" type="text" placeholder="Apellidos..." />
+            </div>
+          </div>
+          <div class="ps-field">
+            <label>Correo electrónico</label>
+            <input id="inv-email" type="email" placeholder="admin@correo.com" />
+          </div>
+          <div id="invite-admin-alert" class="modal-alert" style="margin-bottom:12px"></div>
+          <button class="btn btn-primary" onclick="submitInviteAdmin()">Enviar invitación</button>
+        </div>
+      </div>
+
+      <!-- Mi Perfil -->
+      <div class="page" id="page-profile">
+
+        <div class="profile-hero">
+          <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
+          <div class="profile-info">
+            <h2 id="profile-name">—</h2>
+            <div class="pi-email" id="profile-email">—</div>
+            <div class="pi-badges">
+              <span class="pi-badge" id="profile-role-badge">—</span>
+              <span class="pi-badge inst" id="profile-inst-badge" style="display:none">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editar nombre -->
+        <div class="profile-section">
+          <div class="profile-section-head" onclick="toggleProfileSection(this)">
+            <h3><i class="fa-solid fa-pen"></i> Editar nombre</h3>
+            <span class="ps-arrow">▼</span>
+          </div>
+          <div class="profile-section-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="ps-field">
+                <label>Nombre</label>
+                <input id="ps-first-name" type="text" placeholder="Nombre..." />
+              </div>
+              <div class="ps-field">
+                <label>Apellidos</label>
+                <input id="ps-last-name" type="text" placeholder="Apellidos..." />
+              </div>
+            </div>
+            <div id="ps-name-alert" class="modal-alert" style="margin-top:4px"></div>
+            <div style="margin-top:16px">
+              <button class="btn btn-primary" onclick="submitChangeName()">Guardar nombre</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cambiar contraseña -->
+        <div class="profile-section">
+          <div class="profile-section-head" onclick="toggleProfileSection(this)">
+            <h3><i class="fa-solid fa-key"></i> Cambiar contraseña</h3>
+            <span class="ps-arrow">▼</span>
+          </div>
+          <div class="profile-section-body">
+            <div class="ps-field">
+              <label>Contraseña actual</label>
+              <input id="ps-cur-pwd"  type="password" placeholder="••••••••" />
+            </div>
+            <div class="ps-field">
+              <label>Nueva contraseña</label>
+              <input id="ps-new-pwd"  type="password" placeholder="Mínimo 8 caracteres" />
+            </div>
+            <div class="ps-field">
+              <label>Confirmar nueva contraseña</label>
+              <input id="ps-conf-pwd" type="password" placeholder="••••••••" />
+            </div>
+            <div id="ps-alert" class="modal-alert" style="margin-top:12px"></div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+              <button class="btn btn-primary" onclick="submitChangePassword()">Guardar contraseña</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Eliminar cuenta -->
+        <div class="profile-section">
+          <div class="profile-section-head" onclick="toggleProfileSection(this)">
+            <h3><i class="fa-solid fa-trash"></i> Eliminar cuenta</h3>
+            <span class="ps-arrow">▼</span>
+          </div>
+          <div class="profile-section-body">
+            <p style="font-size:.85rem;color:var(--gray-600);margin:16px 0 12px">
+              Esta acción es irreversible. Se eliminarán tus datos de acceso pero las incidencias registradas permanecerán en el sistema.
+            </p>
+            <div id="delete-confirm-wrap">
+              <button class="btn btn-danger" onclick="showDeleteConfirm()">Eliminar mi cuenta</button>
+            </div>
+            <div id="delete-confirm-step2" style="display:none">
+              <p style="font-size:.84rem;color:#991b1b;margin-bottom:12px"><i class="fa-solid fa-triangle-exclamation"></i> ¿Seguro? Esta acción no se puede deshacer.</p>
+              <div style="display:flex;gap:10px">
+                <button class="btn btn-danger"  onclick="confirmDeleteAccount()">Sí, eliminar cuenta</button>
+                <button class="btn btn-ghost"   onclick="cancelDeleteConfirm()">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="/static/app.js?v=3"></script>
+</body>
+</html>

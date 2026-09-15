@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso — Motor de Triaje Escolar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/static/logo.png" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<div class="login-page">
+
+  <!-- Panel izquierdo -->
+  <div class="login-left">
+    <div class="login-left-content">
+      <div class="login-logo">
+        <svg viewBox="0 0 360 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:340px;filter:drop-shadow(0 8px 24px rgba(15,37,66,.25))">
+          <!-- Background glow -->
+          <circle cx="180" cy="125" r="115" fill="#1B4A8A" opacity=".18"/>
+          <!-- Ground shadow -->
+          <ellipse cx="180" cy="228" rx="130" ry="12" fill="#0F2542" opacity=".12"/>
+          <!-- School body -->
+          <rect x="68" y="128" width="224" height="108" rx="6" fill="#2563EB"/>
+          <!-- Roof -->
+          <polygon points="52,128 180,52 308,128" fill="#1B3A6B"/>
+          <!-- Roof highlight -->
+          <polygon points="52,128 180,52 308,128" fill="none" stroke="#60A5FA" stroke-width="1.5" stroke-linejoin="round"/>
+          <!-- Flag pole -->
+          <rect x="177.5" y="44" width="5" height="40" fill="#ffffff" opacity=".7"/>
+          <!-- Flag -->
+          <path d="M182,44 L208,53 L182,63 Z" fill="#F5B800"/>
+          <!-- Windows row -->
+          <rect x="88"  y="143" width="48" height="36" rx="5" fill="#DBEAFE"/>
+          <rect x="156" y="143" width="48" height="36" rx="5" fill="#DBEAFE"/>
+          <rect x="224" y="143" width="48" height="36" rx="5" fill="#DBEAFE"/>
+          <!-- Window cross lines -->
+          <line x1="112" y1="143" x2="112" y2="179" stroke="#93C5FD" stroke-width="1.5"/>
+          <line x1="88"  y1="161" x2="136" y2="161" stroke="#93C5FD" stroke-width="1.5"/>
+          <line x1="180" y1="143" x2="180" y2="179" stroke="#93C5FD" stroke-width="1.5"/>
+          <line x1="156" y1="161" x2="204" y2="161" stroke="#93C5FD" stroke-width="1.5"/>
+          <line x1="248" y1="143" x2="248" y2="179" stroke="#93C5FD" stroke-width="1.5"/>
+          <line x1="224" y1="161" x2="272" y2="161" stroke="#93C5FD" stroke-width="1.5"/>
+          <!-- Door -->
+          <rect x="156" y="188" width="48" height="48" rx="6" fill="#1B3A6B"/>
+          <path d="M156,196 Q180,180 204,196" fill="none" stroke="#60A5FA" stroke-width="1.5"/>
+          <circle cx="197" cy="213" r="3.5" fill="#F5B800"/>
+          <!-- Steps -->
+          <rect x="146" y="234" width="68" height="5" rx="2" fill="#1B3A6B" opacity=".35"/>
+          <!-- AI badge left (floats) -->
+          <g class="svg-float-1">
+            <circle cx="42" cy="78" r="32" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2"/>
+            <text x="42" y="86" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="800" text-anchor="middle" fill="#2563EB">AI</text>
+          </g>
+          <!-- Dashed line AI → school (flowing) -->
+          <line class="svg-dash" x1="72" y1="88" x2="118" y2="110" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>
+          <!-- Neural badge right (floats delayed) -->
+          <g class="svg-float-2">
+            <circle cx="318" cy="72" r="28" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2"/>
+            <circle cx="309" cy="67" r="4" fill="#2563EB"/>
+            <circle cx="327" cy="67" r="4" fill="#2563EB"/>
+            <circle cx="318" cy="81" r="4" fill="#2563EB"/>
+            <line x1="309" y1="67" x2="327" y2="67" stroke="#60A5FA" stroke-width="1.5"/>
+            <line x1="309" y1="67" x2="318" y2="81" stroke="#60A5FA" stroke-width="1.5"/>
+            <line x1="327" y1="67" x2="318" y2="81" stroke="#60A5FA" stroke-width="1.5"/>
+          </g>
+          <!-- Dashed line neural → school (flowing) -->
+          <line class="svg-dash svg-dash-delay" x1="292" y1="82" x2="248" y2="108" stroke="#60A5FA" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>
+          <!-- Stars (twinkle) -->
+          <path class="svg-twinkle-1" d="M42,138 L45,130 L48,138 L56,141 L48,144 L45,152 L42,144 L34,141 Z" fill="#F5B800"/>
+          <path class="svg-twinkle-2" d="M320,128 L322,122 L324,128 L330,130 L324,132 L322,138 L320,132 L314,130 Z" fill="#F5B800"/>
+          <circle class="svg-twinkle-1" cx="56" cy="162" r="4" fill="#F5B800"/>
+          <circle class="svg-twinkle-2" cx="308" cy="108" r="3.5" fill="#F5B800"/>
+          <circle class="svg-twinkle-2" cx="28" cy="106" r="3" fill="#60A5FA"/>
+          <circle class="svg-twinkle-1" cx="335" cy="100" r="2.5" fill="#60A5FA"/>
+        </svg>
+      </div>
+      <h1>Motor de Triaje Escolar</h1>
+      <div class="login-accent-bar"></div>
+      <p>Plataforma de clasificación inteligente de incidencias de convivencia con IA y Human-in-the-Loop</p>
+      <div class="login-stats">
+        <div class="login-stat"><div class="ls-num">4</div><div class="ls-text">Departamentos</div></div>
+        <div class="login-stat"><div class="ls-num">2</div><div class="ls-text">Modelos IA</div></div>
+        <div class="login-stat"><div class="ls-num">7</div><div class="ls-text">Categorías</div></div>
+        <div class="login-stat"><div class="ls-num">4</div><div class="ls-text">Niveles urgencia</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel derecho -->
+  <div class="login-right">
+    <div class="login-form-wrap">
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('login')">Iniciar sesión</button>
+        <button class="auth-tab"        onclick="switchTab('register')">Crear cuenta</button>
+      </div>
+
+      <!-- ── Login ── -->
+      <div class="auth-panel active" id="panel-login">
+        <form id="login-form">
+          <div class="lf-field">
+            <label for="username">Correo electrónico / usuario</label>
+            <input id="username" type="text" placeholder="tu@correo.com" autocomplete="email" required />
+          </div>
+          <div class="lf-field">
+            <label for="password">Contraseña</label>
+            <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          </div>
+          <button class="btn-login" type="submit" id="btn-login">Entrar</button>
+          <div class="login-alert" id="login-alert"></div>
+        </form>
+
+      </div>
+
+      <!-- ── Registro ── -->
+      <div class="auth-panel" id="panel-register">
+
+        <div id="register-form-wrap">
+          <form id="register-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+              <div class="lf-field" style="margin-bottom:0">
+                <label>Nombre</label>
+                <input id="reg-first" type="text" placeholder="María" required />
+              </div>
+              <div class="lf-field" style="margin-bottom:0">
+                <label>Apellidos</label>
+                <input id="reg-last" type="text" placeholder="García López" required />
+              </div>
+            </div>
+            <div class="lf-field">
+              <label>Correo electrónico</label>
+              <input id="reg-email" type="email" placeholder="tu@correo.com" required />
+            </div>
+            <div class="lf-field">
+              <label>Código de institución</label>
+              <input id="reg-code" type="text" placeholder="Ej: AB12CD34"
+                maxlength="8" style="text-transform:uppercase;letter-spacing:.12em;font-family:monospace" required />
+            </div>
+            <div class="lf-field">
+              <label>Departamento</label>
+              <select id="reg-dept" class="register-select" required>
+                <option value="">— Selecciona tu departamento —</option>
+                <option value="profesorado">Profesorado</option>
+                <option value="tutoria">Tutoría</option>
+                <option value="orientacion">Orientación</option>
+                <option value="direccion">Dirección</option>
+                <option value="servicios_externos">Servicios Externos</option>
+              </select>
+            </div>
+            <button class="btn-login" type="submit" id="btn-register">Crear cuenta</button>
+            <div class="login-alert" id="register-alert"></div>
+          </form>
+        </div>
+
+        <div id="register-success" style="display:none">
+          <div class="register-success">
+            <div class="rs-icon"><i class="fa-solid fa-envelope-circle-check"></i></div>
+            <h3>¡Cuenta creada!</h3>
+            <p>Hemos enviado tu contraseña temporal al correo indicado.<br>Úsala para entrar y cámbiala cuando quieras desde tu perfil.</p>
+            <button class="btn-login" style="margin-top:20px" onclick="switchTab('login')">
+              Ir al inicio de sesión
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  if (localStorage.getItem('token')) window.location.href = '/';
+
+  function switchTab(tab) {
+    const isLogin = tab === 'login';
+    document.querySelectorAll('.auth-tab').forEach((t, i) =>
+      t.classList.toggle('active', i === 0 ? isLogin : !isLogin)
+    );
+    document.getElementById('panel-login').classList.toggle('active', isLogin);
+    document.getElementById('panel-register').classList.toggle('active', !isLogin);
+  }
+
+  // ── Login ──────────────────────────────────────────────
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn     = document.getElementById('btn-login');
+    const alertEl = document.getElementById('login-alert');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    btn.textContent   = 'Entrando...';
+    btn.disabled      = true;
+    alertEl.className = 'login-alert';
+
+    try {
+      const res  = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token',     data.access_token);
+        localStorage.setItem('user_name', data.name);
+        localStorage.setItem('user_role', data.role);
+        localStorage.setItem('user_dept', data.department ?? '');
+        try {
+          const payload = JSON.parse(atob(data.access_token.split('.')[1]));
+          localStorage.setItem('temp_password',    payload.temp_password ? '1' : '0');
+          localStorage.setItem('institution_code', payload.institution_code ?? '');
+        } catch {}
+        window.location.href = '/';
+      } else {
+        alertEl.textContent = data.detail ?? 'Usuario o contraseña incorrectos';
+        alertEl.className   = 'login-alert show';
+        btn.textContent     = 'Entrar';
+        btn.disabled        = false;
+      }
+    } catch {
+      alertEl.textContent = 'No se puede conectar con el servidor';
+      alertEl.className   = 'login-alert show';
+      btn.textContent     = 'Entrar';
+      btn.disabled        = false;
+    }
+  });
+
+  // ── Registro ───────────────────────────────────────────
+  document.getElementById('register-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn     = document.getElementById('btn-register');
+    const alertEl = document.getElementById('register-alert');
+    const first_name       = document.getElementById('reg-first').value.trim();
+    const last_name        = document.getElementById('reg-last').value.trim();
+    const email            = document.getElementById('reg-email').value.trim();
+    const institution_code = document.getElementById('reg-code').value.trim().toUpperCase();
+    const department       = document.getElementById('reg-dept').value;
+
+    if (!department) {
+      alertEl.textContent = 'Selecciona tu departamento';
+      alertEl.className   = 'login-alert show';
+      return;
+    }
+
+    btn.textContent   = 'Creando cuenta...';
+    btn.disabled      = true;
+    alertEl.className = 'login-alert';
+
+    try {
+      const res  = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ first_name, last_name, email, institution_code, department }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('register-form-wrap').style.display = 'none';
+        document.getElementById('register-success').style.display   = 'block';
+      } else {
+        alertEl.textContent = data.detail ?? 'Error al crear la cuenta';
+        alertEl.className   = 'login-alert show';
+        btn.textContent     = 'Crear cuenta';
+        btn.disabled        = false;
+      }
+    } catch {
+      alertEl.textContent = 'No se puede conectar con el servidor';
+      alertEl.className   = 'login-alert show';
+      btn.textContent     = 'Crear cuenta';
+      btn.disabled        = false;
+    }
+  });
+</script>
+</body>
+</html>
