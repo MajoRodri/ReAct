@@ -14,11 +14,14 @@ from app.models.schemas import (
     IncidentSummary, ConfirmResponse,
     RedirectRequest, RedirectResponse,
     LoginRequest, TokenResponse,
-    FollowUpCreate, FollowUpOut,
+    FollowUpCreate, FollowUpOut, FollowUpUpdate,
+    ContactCreate, ContactOut,
     RegisterRequest, ChangePasswordRequest,
     AnalyzeRequest, SaveIncidentRequest,
     InstitutionCreate, InstitutionOut,
     InviteAdminRequest, UpdateNameRequest,
+    StudentCreate, StudentOut,
+    AvatarUpdateRequest,
 )
 from app.db.database import init_db, get_session
 from app.db import repository as repo
@@ -200,6 +203,7 @@ def get_profile(
         "institution_code": user.institution_code,
         "institution_name": institution_name,
         "temp_password":    user.temp_password,
+        "avatar_icon":      user.avatar_icon or "",
         "created_at":       user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -288,6 +292,32 @@ async def triage_incident(
 
 # ── Students ──────────────────────────────────────────────
 
+@app.get("/students")
+def list_students(
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    if user["role"] not in ("director", "admin"):
+        raise HTTPException(status_code=403, detail="Solo dirección puede ver el listado de alumnos")
+    return [{"code": s.code, "full_name": s.full_name} for s in repo.get_all_students(session)]
+
+
+@app.post("/students", response_model=StudentOut)
+def add_student(
+    body: StudentCreate,
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    if user["role"] not in ("director", "admin"):
+        raise HTTPException(status_code=403, detail="Solo dirección puede registrar alumnos")
+    existing = repo.get_student_by_code(session, body.code)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"La matrícula {body.code} ya existe")
+    inst = user.get("institution_code")
+    student = repo.create_student(session, body.code, body.full_name, inst)
+    return StudentOut(code=student.code, full_name=student.full_name)
+
+
 @app.get("/students/{code}")
 def lookup_student(
     code: str,
@@ -297,7 +327,12 @@ def lookup_student(
     student = repo.get_student_by_code(session, code)
     if not student:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
-    return {"code": student.code, "full_name": student.full_name, "grade": student.grade}
+    history = repo.get_student_history(session, student.code)
+    return {
+        "code":           student.code,
+        "full_name":      student.full_name,
+        "incident_count": len(history),
+    }
 
 
 # ── Analyze (no save) ─────────────────────────────────────
@@ -427,7 +462,7 @@ def confirm_incident(
 ):
     if user["role"] == "profesor":
         raise HTTPException(status_code=403, detail="Los profesores no pueden confirmar incidencias")
-    incident = repo.confirm_incident(session, incident_id)
+    incident = repo.confirm_incident(session, incident_id, confirmed_by=user.get("name", user["sub"]))
     if not incident:
         return ConfirmResponse(success=False, message="Incidencia no encontrada")
     return ConfirmResponse(success=True, message="Incidencia confirmada y registrada")
@@ -465,38 +500,60 @@ def redirect_incident(
     )
 
 
+@app.patch("/profile/avatar")
+def update_avatar(
+    body: AvatarUpdateRequest,
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    db_user = repo.get_user_by_username(session, user["sub"])
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    updated = repo.update_avatar(session, db_user.id, body.avatar_icon)
+    return {"avatar_icon": updated.avatar_icon}
+
+
 # ── Calendar ──────────────────────────────────────────────
 
-@app.get("/calendar", response_model=list[FollowUpOut])
+@app.get("/calendar")
 def get_calendar(
     session: Session = Depends(get_session),
     user: dict = Depends(get_current_user),
 ):
+    from app.db.models import Incident
     dept = None if user["role"] == "admin" else user["department"]
     fus  = repo.get_followups_by_department(session, dept)
-    return [
-        FollowUpOut(
-            id=f.id,
-            incident_id=f.incident_id,
-            department=f.department,
-            scheduled_date=f.scheduled_date,
-            notes=f.notes,
-            created_by=f.created_by,
-            created_at=f.created_at,
-        )
-        for f in fus
-    ]
+    result = []
+    for f in fus:
+        inc = session.get(Incident, f.incident_id)
+        result.append({
+            "id":                 f.id,
+            "incident_id":        f.incident_id,
+            "department":         f.department,
+            "scheduled_date":     f.scheduled_date.isoformat(),
+            "notes":              f.notes,
+            "created_by":         f.created_by,
+            "created_at":         f.created_at.isoformat(),
+            "urgency_level":      inc.urgency_level if inc else "baja",
+            "incident_confirmed": inc.confirmed     if inc else False,
+            "confirmed_by":       inc.confirmed_by  if inc else None,
+            "student_name":       inc.student_name  if inc else "",
+        })
+    return result
 
 
-@app.post("/calendar", response_model=FollowUpOut)
+@app.post("/calendar")
 def create_followup(
     body: FollowUpCreate,
     session: Session = Depends(get_session),
     user: dict = Depends(get_current_user),
 ):
+    from app.db.models import Incident
     if user["role"] == "profesor":
         raise HTTPException(status_code=403, detail="Los profesores no pueden agendar seguimientos")
     dept = user["department"] if user["role"] != "admin" else "admin"
+    inc  = session.get(Incident, body.incident_id)
+    urgency = inc.urgency_level if inc else "baja"
     fu = repo.save_followup(
         session,
         body.incident_id,
@@ -504,16 +561,79 @@ def create_followup(
         body.scheduled_date,
         body.notes,
         user["sub"],
+        urgency_level=urgency,
     )
-    return FollowUpOut(
-        id=fu.id,
-        incident_id=fu.incident_id,
-        department=fu.department,
-        scheduled_date=fu.scheduled_date,
-        notes=fu.notes,
-        created_by=fu.created_by,
-        created_at=fu.created_at,
-    )
+    return {
+        "id": fu.id, "incident_id": fu.incident_id, "department": fu.department,
+        "scheduled_date": fu.scheduled_date.isoformat(), "notes": fu.notes,
+        "created_by": fu.created_by, "created_at": fu.created_at.isoformat(),
+        "urgency_level": fu.urgency_level, "incident_confirmed": False, "student_name": "",
+    }
+
+
+@app.patch("/calendar/{followup_id}")
+def update_followup(
+    followup_id: int,
+    body: FollowUpUpdate,
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    if user["role"] == "profesor":
+        raise HTTPException(status_code=403, detail="Sin permiso")
+    fu = repo.update_followup(session, followup_id, body.scheduled_date, body.notes)
+    if not fu:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    from app.db.models import Incident
+    inc = session.get(Incident, fu.incident_id)
+    return {
+        "id": fu.id, "incident_id": fu.incident_id, "department": fu.department,
+        "scheduled_date": fu.scheduled_date.isoformat(), "notes": fu.notes,
+        "created_by": fu.created_by, "created_at": fu.created_at.isoformat(),
+        "urgency_level": inc.urgency_level if inc else fu.urgency_level,
+        "incident_confirmed": inc.confirmed  if inc else False,
+        "confirmed_by":       inc.confirmed_by if inc else None,
+        "student_name": inc.student_name if inc else "",
+    }
+
+
+# ── External Contacts ─────────────────────────────────────
+
+@app.get("/contacts", response_model=list[ContactOut])
+def get_contacts(
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    inst = user.get("institution_code")
+    if not inst:
+        raise HTTPException(status_code=403, detail="Sin institución asignada")
+    return repo.get_contacts(session, inst)
+
+
+@app.post("/contacts", response_model=ContactOut, status_code=201)
+def add_contact(
+    body: ContactCreate,
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    if user.get("department") != "servicios_externos" and user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Solo servicios externos puede gestionar contactos")
+    inst = user.get("institution_code")
+    if not inst:
+        raise HTTPException(status_code=403, detail="Sin institución asignada")
+    return repo.create_contact(session, inst, body.label, body.phone, body.notes, user.get("name", user["sub"]))
+
+
+@app.delete("/contacts/{contact_id}", status_code=204)
+def delete_contact(
+    contact_id: int,
+    session: Session = Depends(get_session),
+    user: dict = Depends(get_current_user),
+):
+    if user.get("department") != "servicios_externos" and user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Sin permiso")
+    inst = user.get("institution_code") or ""
+    if not repo.delete_contact(session, contact_id, inst):
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
 
 
 # ── Compare ───────────────────────────────────────────────
@@ -637,7 +757,7 @@ async def invite_admin(
     if existing:
         if existing.role != "admin":
             raise HTTPException(status_code=409, detail="Ya existe una cuenta con ese correo para otro rol")
-        # Admin account already exists — reissue temp password and resend invitation
+        # Admin account already exists - reissue temp password and resend invitation
         existing.hashed_password = hash_password(temp_pwd)
         existing.temp_password = True
         session.add(existing)
