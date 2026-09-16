@@ -1,3 +1,5 @@
+"""Cliente para el modelo local Ollama (llama3.x) via API REST."""
+
 import json
 import time
 import httpx
@@ -7,12 +9,19 @@ from app.models.schemas import TriageResult
 
 
 class OllamaClient:
+    """Encapsula las llamadas HTTP al servidor Ollama local."""
 
     def __init__(self):
+        """Lee la URL base y el modelo desde la configuración de entorno."""
         self.base_url = settings.ollama_base_url
         self.model = settings.ollama_model
 
     async def triage(self, report_text: str, history: list = None) -> TriageResult:
+        """Envía el reporte al modelo y devuelve el resultado de triaje.
+
+        Construye el prompt completo (system + user), hace POST a /api/chat,
+        mide la latencia y delega el parseo a _parse_response.
+        """
         payload = {
             "model": self.model,
             "messages": [
@@ -44,6 +53,11 @@ class OllamaClient:
         return self._parse_response(raw_content, latency_ms, tokens_used)
 
     def _parse_response(self, raw: str, latency_ms: float, tokens_used) -> TriageResult:
+        """Convierte el JSON crudo del modelo en un TriageResult validado por Pydantic.
+
+        Lanza ValueError si el modelo devuelve texto no parseable como JSON;
+        Pydantic rechaza cualquier campo fuera del schema (alucinaciones de claves).
+        """
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:

@@ -9,7 +9,7 @@ GMAIL_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "")
 
 def send_temp_password(to_email: str, name: str, temp_password: str, institution_name: str):
     if not GMAIL_USER or not GMAIL_PASSWORD:
-        print(f"[EMAIL] No config — temp pwd for {to_email}: {temp_password}")
+        print(f"[EMAIL] No config - temp pwd for {to_email}: {temp_password}")
         return
     subject = "Tu acceso al Motor de Triaje Escolar"
     body = f"""Hola, {name}.

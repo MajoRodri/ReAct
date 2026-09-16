@@ -11,6 +11,32 @@ PROCESO DE RAZONAMIENTO (sigue estos pasos en orden):
 3. CLASIFICAR: Asigna categoría, urgencia y departamento según los hechos objetivos.
 4. ACTUAR: Genera el JSON final.
 
+REGLAS DE ESCALACIÓN POR REINCIDENCIA:
+La reincidencia NO eleva automáticamente la urgencia. Aplica estas reglas según el patrón acumulado:
+
+· agresion_verbal repetida (insultos, gritos):
+  - 1ª vez → tutoria / baja
+  - 2ª-3ª vez del mismo tipo → tutoria / media
+  - 4ª+ vez O combinada con otra categoría → orientacion / media o alta
+
+· violencia_fisica:
+  - 1ª vez leve → orientacion / alta
+  - Reincidente o grave → direccion / alta
+  - Con lesiones o amenaza seria → servicios_externos / crítica
+
+· acoso (patrón sistemático ya de por sí):
+  - 1ª detección → orientacion / alta
+  - Reincidente → direccion / alta o crítica
+
+· exclusion_social repetida:
+  - 1ª-2ª vez → orientacion / media
+  - Prolongada o agravada → orientacion / alta
+
+· autolesion o ideación suicida: SIEMPRE servicios_externos / crítica, sin importar historial.
+· sustancias: SIEMPRE servicios_externos / alta o crítica.
+
+NUNCA envíes a servicios_externos por insultos o conflictos verbales leves, aunque sean repetidos.
+
 CATEGORÍAS VÁLIDAS:
 - acoso: patrón repetido de hostigamiento
 - violencia_fisica: agresión con contacto físico
@@ -75,13 +101,24 @@ def build_user_prompt(report_text: str, history: list = None) -> str:
     prompt = f"Analiza el siguiente reporte de incidencia escolar:\n\n\"{report_text}\""
 
     if history:
-        prompt += f"\n\nCONTEXTO DE REINCIDENCIA — Este alumno tiene {len(history)} incidencia(s) previa(s) registrada(s):"
-        for h in history[:4]:
-            fecha = h.created_at.strftime("%d/%m/%Y")
-            prompt += f"\n  · [{fecha}] {h.category} ({h.urgency_level}): {h.summary}"
+        # Contar por categoría para detectar patrones
+        from collections import Counter
+        cat_counts = Counter(h.category for h in history)
+        pattern_lines = ", ".join(f"{cat} x{n}" for cat, n in cat_counts.most_common())
+
         prompt += (
-            "\n\nTen en cuenta este historial al evaluar la urgencia: "
-            "la reincidencia puede elevar el nivel de urgencia respecto a un caso aislado."
+            f"\n\nHISTORIAL DEL ALUMNO ({len(history)} incidencia(s) previa(s)):"
+            f"\n  Patrón acumulado: {pattern_lines}"
+        )
+        for h in history[:5]:
+            fecha = h.created_at.strftime("%d/%m/%Y")
+            estado = "resuelta" if h.confirmed else "pendiente"
+            prompt += f"\n  · [{fecha}] {h.category} - urgencia {h.urgency_level} - {h.summary} ({estado})"
+
+        prompt += (
+            "\n\nAplica las REGLAS DE ESCALACIÓN POR REINCIDENCIA del sistema."
+            "\nEscala SOLO si el patrón acumulado lo justifica según el tipo de incidencia."
+            "\nIncidentes verbales leves repetidos NO se derivan a servicios externos."
         )
 
     return prompt
