@@ -5,8 +5,10 @@ import os
 import webbrowser
 import time
 
-BASE   = os.path.dirname(__file__)
-PYTHON = os.path.join(BASE, ".venv", "Scripts", "python.exe")
+BASE = os.path.dirname(__file__)
+
+# Use the Python that's running this script (works with venv, conda, system Python)
+PYTHON = sys.executable
 
 processes = []
 
