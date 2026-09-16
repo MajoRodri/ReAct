@@ -63,37 +63,38 @@ EJEMPLOS DE CLASIFICACIÓN:
 Ejemplo 1:
 Reporte: "Dos alumnos se han insultado en el recreo, se han separado solos."
 {
+  "reasoning": "Observo: intercambio verbal entre dos alumnos sin continuación. Pienso: sin riesgo físico, situación puntual y resuelta. Clasifico: agresión verbal leve, urgencia baja, tutoria suficiente.",
   "category": "agresion_verbal",
   "urgency_level": "baja",
   "department": "tutoria",
-  "summary": "Insultos entre alumnos en recreo, se resolvió solo",
-  "reasoning": "Observo: intercambio verbal entre dos alumnos sin continuación. Pienso: sin riesgo físico, situación puntual y resuelta. Clasifico: agresión verbal leve, urgencia baja, tutoria suficiente."
+  "summary": "Insultos entre alumnos en recreo, se resolvió solo"
 }
 
 Ejemplo 2:
 Reporte: "Un alumno lleva semanas sin que nadie le hable en clase. Sus compañeros lo ignoran deliberadamente y se ríen cuando participa."
 {
+  "reasoning": "Observo: patrón prolongado de aislamiento y ridiculización. Pienso: la duración y sistematicidad indican daño psicológico acumulado. Clasifico: exclusión social de alta urgencia, orientación para intervención y seguimiento.",
   "category": "exclusion_social",
   "urgency_level": "alta",
   "department": "orientacion",
-  "summary": "Exclusión social sistemática con burlas repetidas en clase",
-  "reasoning": "Observo: patrón prolongado de aislamiento y ridiculización. Pienso: la duración y sistematicidad indican daño psicológico acumulado. Clasifico: exclusión social de alta urgencia, orientación para intervención y seguimiento."
+  "summary": "Exclusión social sistemática con burlas repetidas en clase"
 }
 
 Ejemplo 3:
 Reporte: "Una alumna ha venido llorando y dice que no quiere vivir más. Tiene marcas en los brazos."
 {
+  "reasoning": "Observo: indicadores directos de autolesión activa e ideación suicida. Pienso: riesgo inmediato para la integridad física y psicológica. Clasifico: crítico, requiere intervención externa urgente independientemente de cualquier otro factor.",
   "category": "autolesion",
   "urgency_level": "crítica",
   "department": "servicios_externos",
-  "summary": "Alumna con ideación suicida y marcas de autolesión visibles",
-  "reasoning": "Observo: indicadores directos de autolesión activa e ideación suicida. Pienso: riesgo inmediato para la integridad física y psicológica. Clasifico: crítico, requiere intervención externa urgente independientemente de cualquier otro factor."
+  "summary": "Alumna con ideación suicida y marcas de autolesión visibles"
 }
 
 FORMATO DE RESPUESTA:
 Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin markdown, sin bloques de código.
-El campo 'summary' debe tener máximo 10 palabras.
+El primer campo SIEMPRE debe ser 'reasoning', seguido de 'category', 'urgency_level', 'department' y 'summary'.
 El campo 'reasoning' debe seguir el patrón: Observo → Pienso → Clasifico.
+El campo 'summary' debe tener máximo 10 palabras.
 """
 
 

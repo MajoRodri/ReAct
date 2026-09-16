@@ -30,7 +30,7 @@ from app.auth.dependencies import get_current_user, require_admin
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
-app = FastAPI(title="Motor de Triaje Escolar", version="0.4.0")
+app = FastAPI(title="ReAct Education - Motor de Triaje Escolar", version="0.4.0")
 
 app.add_middleware(
     CORSMiddleware,
