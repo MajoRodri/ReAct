@@ -20,7 +20,7 @@
 
 ## ¿Qué es ReAct Education?
 
-**ReAct Education** es una aplicación web para la gestión y clasificación automática de incidencias de convivencia escolar. Un profesor describe un incidente en lenguaje natural y el sistema, usando un modelo de lenguaje (LLM), lo analiza, lo clasifica por categoría y urgencia, y lo deriva al departamento correspondiente, odo con razonamiento explicable paso a paso (Chain-of-Thought).
+**ReAct Education** es una aplicación web para la gestión y clasificación automática de incidencias de convivencia escolar. Un profesor describe un incidente en lenguaje natural y el sistema, usando un modelo de lenguaje (LLM), lo analiza, lo clasifica por categoría y urgencia, y lo deriva al departamento correspondiente, todo con razonamiento explicable paso a paso (Chain-of-Thought).
 
 ### Características principales
 
@@ -213,13 +213,7 @@ Gestiona los incidentes derivados al departamento de **Orientación** (seguimien
 
 Gestiona los incidentes derivados a **Tutoría** (conflictos leves entre pares, primera intervención).
 
-Funcionalidades idénticas al orientador, aplicadas a su propio departamento:
-
-- Bandeja de entrada propia con sus incidentes
-- Confirmar y redirigir incidentes
-- Calendario de citas de seguimiento con edición
-- Tabla de incidencias históricas
-- Perfil con selección de avatar
+Funcionalidades idénticas al orientador, aplicadas a su propio departamento.
 
 </details>
 
@@ -230,13 +224,7 @@ Funcionalidades idénticas al orientador, aplicadas a su propio departamento:
 
 Gestiona los incidentes derivados a **Dirección** (faltas graves, acción disciplinaria formal).
 
-Funcionalidades idénticas al orientador y tutor, aplicadas a su departamento:
-
-- Bandeja de entrada propia con sus incidentes
-- Confirmar y redirigir incidentes
-- Calendario de citas de seguimiento con edición
-- Tabla de incidencias históricas
-- Perfil con selección de avatar
+Funcionalidades idénticas al orientador y tutor, aplicadas a su departamento.
 
 </details>
 
