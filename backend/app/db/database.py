@@ -4,7 +4,7 @@ load_dotenv(find_dotenv())
 
 from sqlmodel import create_engine, SQLModel, Session, select
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 DB_PATH = os.path.join(DATA_DIR, "triage.db")
@@ -128,7 +128,7 @@ DEMO_STUDENTS = [
 
 
 def init_db():
-    from app.db.models import User, Incident, FollowUp, Institution  # noqa: evita import circular
+    from app.db.models import User, Incident, FollowUp, Institution, ExternalContact  # noqa: evita import circular
     from app.auth.auth import hash_password
     from sqlalchemy import text
 
@@ -143,6 +143,7 @@ def init_db():
             ("redirected_by",  "TEXT"),
             ("redirect_reason","TEXT"),
             ("student_code",   "TEXT"),
+            ("confirmed_by",   "TEXT"),
         ]
         for col, typedef in incident_columns:
             try:
@@ -157,6 +158,7 @@ def init_db():
             ("last_name",        "TEXT NOT NULL DEFAULT ''"),
             ("institution_code", "TEXT"),
             ("temp_password",    "INTEGER NOT NULL DEFAULT 0"),
+            ("avatar_icon",      "TEXT"),
             ("created_at",       "DATETIME"),
         ]
         for col, typedef in user_columns:
