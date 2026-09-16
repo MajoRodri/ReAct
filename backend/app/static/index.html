@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="/static/logo.png" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" />
-  <link rel="stylesheet" href="/static/style.css?v=3" />
+  <link rel="stylesheet" href="/static/style.css?v=5" />
 </head>
 <body>
 
@@ -51,8 +51,8 @@
       <div class="sidebar-user-btn" onclick="goToProfile()">
         <div class="user-avatar" id="user-avatar">?</div>
         <div class="user-info">
-          <div class="u-name" id="u-name">—</div>
-          <div class="u-role" id="u-role">—</div>
+          <div class="u-name" id="u-name">-</div>
+          <div class="u-role" id="u-role">-</div>
         </div>
       </div>
       <button class="btn-logout-icon" onclick="logout()" title="Cerrar sesión"><i class="fa-solid fa-power-off"></i></button>
@@ -75,49 +75,21 @@
             <h2 id="welcome-title">Bienvenido</h2>
             <p>Panel de control del Motor de Triaje Escolar</p>
             <div class="wb-pills">
-              <span class="wb-pill" id="wb-role-pill">—</span>
+              <span class="wb-pill" id="wb-role-pill">-</span>
             </div>
           </div>
         </div>
         <div class="stats-grid">
-          <div class="stat-card"><div class="sc-icon sc-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="sc-num" id="stat-total">—</div><div class="sc-label">Total incidencias</div></div>
-          <div class="stat-card"><div class="sc-icon sc-yellow"><i class="fa-solid fa-clock"></i></div><div class="sc-num" id="stat-pending">—</div><div class="sc-label">Pendientes</div></div>
-          <div class="stat-card"><div class="sc-icon sc-green"><i class="fa-solid fa-circle-check"></i></div><div class="sc-num" id="stat-confirmed">—</div><div class="sc-label">Confirmadas</div></div>
-          <div class="stat-card"><div class="sc-icon sc-red"><i class="fa-solid fa-circle-exclamation"></i></div><div class="sc-num" id="stat-critical">—</div><div class="sc-label">Urgencia crítica</div></div>
+          <div class="stat-card"><div class="sc-icon sc-blue"><i class="fa-solid fa-clipboard-list"></i></div><div class="sc-num" id="stat-total">-</div><div class="sc-label">Total incidencias</div></div>
+          <div class="stat-card"><div class="sc-icon sc-yellow"><i class="fa-solid fa-clock"></i></div><div class="sc-num" id="stat-pending">-</div><div class="sc-label">Pendientes</div></div>
+          <div class="stat-card"><div class="sc-icon sc-green"><i class="fa-solid fa-circle-check"></i></div><div class="sc-num" id="stat-confirmed">-</div><div class="sc-label">Confirmadas</div></div>
+          <div class="stat-card"><div class="sc-icon sc-red"><i class="fa-solid fa-circle-exclamation"></i></div><div class="sc-num" id="stat-critical">-</div><div class="sc-label">Urgencia crítica</div></div>
         </div>
 
-        <!-- Guía de uso — solo visible para profesorado -->
-        <div class="card profesor-guide" id="profesor-guide" style="display:none">
-          <div class="card-title"><i class="fa-solid fa-circle-info"></i> Cómo registrar una incidencia</div>
-          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:20px">
-            Como docente puedes reportar incidencias de convivencia. La IA las clasifica automáticamente y las deriva al departamento adecuado para su gestión.
-          </p>
-          <div class="guide-steps">
-            <div class="guide-step">
-              <div class="gs-num">1</div>
-              <div>
-                <strong>Ve a "Nuevo Caso"</strong> y describe la incidencia con el mayor detalle posible: qué ocurrió, cuándo, quiénes estaban implicados y si hubo testigos. Cuanta más información, mejor clasifica la IA.
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="gs-num">2</div>
-              <div>
-                <strong>Dos modelos de IA analizan simultáneamente</strong> el texto y proponen una categoría, nivel de urgencia y departamento al que derivar el caso.
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="gs-num">3</div>
-              <div>
-                <strong>Selecciona la clasificación</strong> que te parezca más precisa entre las dos propuestas y confírmala. El caso quedará registrado y pendiente de validación por el departamento.
-              </div>
-            </div>
-            <div class="guide-step">
-              <div class="gs-num">4</div>
-              <div>
-                <strong>En "Incidencias"</strong> puedes consultar el estado de todo lo que has reportado. Cuando el departamento lo valide, aparecerá como <em>Confirmada</em>.
-              </div>
-            </div>
-          </div>
+        <!-- Guía de uso por rol -->
+        <div class="card role-guide" id="role-guide" style="display:none">
+          <div class="card-title" id="role-guide-title"></div>
+          <div class="guide-steps" id="role-guide-steps"></div>
         </div>
 
         <div class="card">
@@ -138,7 +110,8 @@
               <input type="text" id="student-code-input" placeholder="Código de alumno (ej. EST2026001)" maxlength="20" autocomplete="off" />
               <button type="button" class="btn btn-secondary" id="lookup-btn"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
             </div>
-            <div id="student-badge" style="display:none"></div>
+            <div id="student-error" style="display:none"></div>
+            <div id="students-list"></div>
             <textarea id="triage-text" placeholder="Describe la incidencia con el mayor detalle posible..." disabled></textarea>
             <button class="btn btn-primary" id="triage-btn" type="submit" disabled><i class="fa-solid fa-magnifying-glass"></i> Analizar con IA</button>
           </form>
@@ -186,10 +159,34 @@
       <div class="page" id="page-calendar">
         <div class="card">
           <div class="card-title"><i class="fa-solid fa-calendar-days"></i> Agenda de Seguimientos</div>
-          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:16px">
-            Citas programadas para tu departamento.
-          </p>
+          <div class="cal-nav">
+            <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="cal-month-label" style="font-weight:700;font-size:1rem;color:var(--blue-900);min-width:160px;text-align:center"></span>
+            <button class="btn btn-ghost btn-sm" onclick="calNextMonth()"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
           <div id="calendar-list"><p style="color:var(--gray-400)">Cargando...</p></div>
+        </div>
+      </div>
+
+      <!-- Gestión de Alumnos (direccion / admin) -->
+      <div class="page" id="page-students">
+        <div class="card">
+          <div class="card-title"><i class="fa-solid fa-user-graduate"></i> Gestión de Alumnos</div>
+          <p style="font-size:.86rem;color:var(--gray-600);margin-bottom:16px">
+            Registro de alumnos del centro. Solo dirección puede dar de alta nuevos alumnos.
+          </p>
+          <form id="add-student-form" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+            <input type="text" id="new-student-code"      placeholder="Matrícula (ej. EST2026011)" style="flex:1;min-width:160px;padding:9px 13px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.88rem;font-family:inherit" />
+            <input type="text" id="new-student-name"      placeholder="Nombre completo"            style="flex:2;min-width:220px;padding:9px 13px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:.88rem;font-family:inherit" />
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Añadir alumno</button>
+          </form>
+          <div class="alert" id="students-alert"></div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Matrícula</th><th>Nombre completo</th></tr></thead>
+              <tbody id="students-body"><tr><td colspan="2" style="text-align:center;padding:24px;color:var(--gray-400)">Cargando...</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -270,12 +267,24 @@
         <div class="profile-hero">
           <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
           <div class="profile-info">
-            <h2 id="profile-name">—</h2>
-            <div class="pi-email" id="profile-email">—</div>
+            <h2 id="profile-name">-</h2>
+            <div class="pi-email" id="profile-email">-</div>
             <div class="pi-badges">
-              <span class="pi-badge" id="profile-role-badge">—</span>
-              <span class="pi-badge inst" id="profile-inst-badge" style="display:none">—</span>
+              <span class="pi-badge" id="profile-role-badge">-</span>
+              <span class="pi-badge inst" id="profile-inst-badge" style="display:none">-</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Avatar picker -->
+        <div class="profile-section">
+          <div class="profile-section-head" onclick="toggleProfileSection(this)">
+            <h3><i class="fa-solid fa-palette"></i> Avatar</h3>
+            <span class="ps-arrow">▼</span>
+          </div>
+          <div class="profile-section-body">
+            <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:14px">Elige un icono como foto de perfil.</p>
+            <div class="avatar-picker" id="avatar-picker"></div>
           </div>
         </div>
 
@@ -329,6 +338,30 @@
           </div>
         </div>
 
+        <!-- Contactos externos (solo servicios_externos) -->
+        <div class="profile-section" id="contacts-section">
+          <div class="profile-section-head" onclick="toggleProfileSection(this)">
+            <h3><i class="fa-solid fa-address-book"></i> Contactos de Emergencia</h3>
+            <span class="ps-arrow">▼</span>
+          </div>
+          <div class="profile-section-body">
+            <p style="font-size:.83rem;color:var(--gray-500);margin-bottom:16px">
+              Directorio de contactos externos para intervención rápida.
+            </p>
+            <div id="contacts-list"></div>
+            <div class="contacts-quick-add" id="contacts-quick-suggestions"></div>
+            <div class="contacts-form">
+              <h5 style="margin:0 0 10px;font-size:.85rem">Añadir contacto</h5>
+              <div class="form-row">
+                <input type="text"  id="ct-label" placeholder="Nombre / organismo..." style="flex:2;min-width:140px" />
+                <input type="tel"   id="ct-phone" placeholder="Teléfono..."           style="flex:1;min-width:110px" />
+                <input type="text"  id="ct-notes" placeholder="Notas (opcional)..."   style="flex:2;min-width:140px" />
+                <button class="btn btn-primary" onclick="addContact()"><i class="fa-solid fa-plus"></i> Añadir</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Eliminar cuenta -->
         <div class="profile-section">
           <div class="profile-section-head" onclick="toggleProfileSection(this)">
@@ -359,6 +392,6 @@
 </div>
 
 <div id="toast" class="toast"></div>
-<script src="/static/app.js?v=3"></script>
+<script src="/static/app.js?v=12"></script>
 </body>
 </html>

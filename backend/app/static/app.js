@@ -61,6 +61,17 @@ function deptLabel(dept) {
 // ── Navigation ────────────────────────────────────────────
 function goToProfile() {
   showPage('page-profile', 'Mi Perfil');
+
+  const sec = document.getElementById('contacts-section');
+  if (sec && (userRole() === 'externo' || userDept() === 'servicios_externos')) {
+    sec.style.display = 'block';
+    const head = sec.querySelector('.profile-section-head');
+    const body = sec.querySelector('.profile-section-body');
+    if (head) head.classList.add('open');
+    if (body) body.classList.add('open');
+    loadContacts();
+  }
+
   loadProfile();
 }
 
@@ -83,8 +94,14 @@ function showPage(id, title) {
   const role = userRole();
   const dept = userDept();
 
-  const initial = name.charAt(0).toUpperCase();
-  document.getElementById('user-avatar').textContent = initial;
+  const savedIcon = localStorage.getItem('avatar_icon') || '';
+  const avatarEl = document.getElementById('user-avatar');
+  if (savedIcon) {
+    avatarEl.innerHTML = `<i class="fa-solid ${savedIcon}"></i>`;
+    avatarEl.classList.add('has-icon');
+  } else {
+    avatarEl.textContent = name.charAt(0).toUpperCase();
+  }
   document.getElementById('u-name').textContent      = name;
   document.getElementById('u-role').textContent      = dept ? `${rolLabel(role)} · ${deptLabel(dept)}` : rolLabel(role);
   if (role !== 'admin') {
@@ -97,6 +114,16 @@ function showPage(id, title) {
 
   if (tempPwd()) {
     document.getElementById('first-login-modal').classList.remove('hidden');
+  }
+
+  // Contacts section: show only for servicios_externos / externo
+  const contactsSec = document.getElementById('contacts-section');
+  if (contactsSec) {
+    if (role === 'externo' || dept === 'servicios_externos') {
+      contactsSec.style.display = 'block';
+    } else {
+      contactsSec.style.display = 'none';
+    }
   }
 })();
 
@@ -157,6 +184,9 @@ function buildSidebar(role) {
   if (role !== 'profesor' && role !== 'admin') {
     nav.push({ id: 'page-calendar', icon: '<i class="fa-solid fa-calendar-days"></i>', label: 'Agenda', fn: loadCalendar });
   }
+  if (role === 'director' || role === 'admin') {
+    nav.push({ id: 'page-students', icon: '<i class="fa-solid fa-user-graduate"></i>', label: 'Alumnos', fn: loadStudents });
+  }
   const container = document.getElementById('sidebar-nav');
   container.innerHTML = nav.map(item => `
     <button class="nav-item" data-page="${item.id}">
@@ -203,7 +233,108 @@ async function checkStatus() {
   } catch { dot.className = 'status-dot offline'; txt.textContent = 'Sin conexión'; }
 }
 
+// ── Students management (direccion / admin) ───────────────
+async function loadStudents() {
+  const body = document.getElementById('students-body');
+  const alrt = document.getElementById('students-alert');
+  const form = document.getElementById('add-student-form');
+  if (!body) return;
+
+  const render = async () => {
+    const res = await apiFetch('/students');
+    if (!res) return;
+    const list = await res.json();
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:24px;color:var(--gray-400)">Sin alumnos registrados</td></tr>';
+      return;
+    }
+    body.innerHTML = list.map(s => `
+      <tr><td><code>${s.code}</code></td><td>${s.full_name}</td></tr>`).join('');
+  };
+  await render();
+
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = '1';
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const code = document.getElementById('new-student-code').value.trim().toUpperCase();
+      const name = document.getElementById('new-student-name').value.trim();
+      if (!code || !name) return;
+      const res = await apiFetch('/students', {
+        method: 'POST',
+        body: JSON.stringify({ code, full_name: name }),
+      });
+      if (!res) return;
+      if (res.ok) {
+        document.getElementById('new-student-code').value = '';
+        document.getElementById('new-student-name').value = '';
+        showToast(`Alumno ${name} añadido`);
+        await render();
+      } else {
+        const err = await res.json();
+        showAlert(alrt, err.detail ?? 'Error al añadir alumno');
+      }
+    });
+  }
+}
+
 // ── Dashboard ─────────────────────────────────────────────
+const ROLE_GUIDES = {
+  profesor: {
+    title: '<i class="fa-solid fa-file-pen"></i> Cómo registrar una incidencia',
+    steps: [
+      ['<i class="fa-solid fa-pen"></i> Nuevo Caso',    'Busca el código del alumno y describe qué ocurrió con el mayor detalle posible.'],
+      ['<i class="fa-solid fa-robot"></i> Análisis IA', 'Dos modelos analizan el texto y proponen categoría, urgencia y departamento.'],
+      ['<i class="fa-solid fa-check"></i> Confirma',    'Selecciona la clasificación más precisa. El caso pasa automáticamente a la Bandeja del departamento.'],
+      ['<i class="fa-solid fa-eye"></i> Seguimiento',   'En "Incidencias" puedes ver el estado de todo lo que has reportado.'],
+    ],
+  },
+  _nonProfesor: {
+    steps: [
+      ['<i class="fa-solid fa-inbox"></i> Bandeja',          'Revisa los casos asignados a tu departamento. Cuando estés listo, agenda una cita de seguimiento con fecha, hora y motivo.'],
+      ['<i class="fa-solid fa-calendar-days"></i> Agenda',   'Vista mensual de todas tus citas. Puedes editar la fecha u hora de cualquiera y confirmarla tras atender al alumno.'],
+      ['<i class="fa-solid fa-shuffle"></i> Redirigir',      'Si un caso supera tu ámbito, redirígeslo a otro departamento desde la Bandeja.'],
+      ['<i class="fa-solid fa-clock-rotate-left"></i> Incidencias', 'Historial completo del centro. Detecta patrones de reincidencia y consulta el razonamiento de la IA.'],
+    ],
+  },
+};
+
+const ROLE_TITLES = {
+  tutor:      '<i class="fa-solid fa-user"></i> Tu flujo de trabajo · Tutoría',
+  orientador: '<i class="fa-solid fa-brain"></i> Tu flujo de trabajo · Orientación',
+  director:   '<i class="fa-solid fa-landmark"></i> Tu flujo de trabajo · Dirección',
+  externo:    '<i class="fa-solid fa-circle-exclamation"></i> Tu flujo de trabajo · Servicios Externos',
+};
+
+const ROLE_EXTRA = {
+  director: ['<i class="fa-solid fa-user-graduate"></i> Alumnos', 'Solo dirección puede dar de alta nuevos alumnos y consultar su historial completo de incidencias.'],
+  externo:  ['<i class="fa-solid fa-address-book"></i> Contactos', 'En tu perfil tienes el directorio de contactos de emergencia (policía, salud mental…) para actuar con rapidez.'],
+};
+
+function renderRoleGuide(role) {
+  const guide = document.getElementById('role-guide');
+  if (!guide) return;
+
+  if (role === 'profesor') {
+    const cfg = ROLE_GUIDES.profesor;
+    document.getElementById('role-guide-title').innerHTML = cfg.title;
+    document.getElementById('role-guide-steps').innerHTML = cfg.steps.map(([t, d]) =>
+      `<div class="guide-step"><div class="gs-icon">${t}</div><div>${d}</div></div>`).join('');
+    guide.style.display = 'block';
+    return;
+  }
+
+  if (!ROLE_TITLES[role]) { guide.style.display = 'none'; return; }
+
+  const steps = [...ROLE_GUIDES._nonProfesor.steps];
+  if (ROLE_EXTRA[role]) steps.push(ROLE_EXTRA[role]);
+
+  document.getElementById('role-guide-title').innerHTML = ROLE_TITLES[role];
+  document.getElementById('role-guide-steps').innerHTML = steps.map(([t, d]) =>
+    `<div class="guide-step"><div class="gs-icon">${t}</div><div>${d}</div></div>`).join('');
+  guide.style.display = 'block';
+}
+
 async function loadDashboard() {
   const res = await apiFetch('/incidents');
   if (!res) return;
@@ -214,9 +345,8 @@ async function loadDashboard() {
   document.getElementById('stat-confirmed').textContent = data.filter(i => i.confirmed).length;
   document.getElementById('stat-critical').textContent  = data.filter(i => i.urgency_level === 'crítica').length;
 
-  // Mostrar guía de uso solo para profesorado
-  const guide = document.getElementById('profesor-guide');
-  if (guide) guide.style.display = userRole() === 'profesor' ? 'block' : 'none';
+  // Guía de uso por rol
+  renderRoleGuide(userRole());
 
   const recent = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
   const recentList = document.getElementById('recent-list');
@@ -244,50 +374,75 @@ async function loadDashboard() {
 let _analyzeResults  = {};
 let _analyzeCtx      = { student: '', text: '', studentCode: '' };
 
-const triageForm    = document.getElementById('triage-form');
-const triageResult  = document.getElementById('triage-result');
-const triageSpinner = document.getElementById('triage-spinner');
-const triageAlert   = document.getElementById('triage-alert');
-const triageBtn     = document.getElementById('triage-btn');
-const triageText    = document.getElementById('triage-text');
-const lookupBtn     = document.getElementById('lookup-btn');
+const triageForm       = document.getElementById('triage-form');
+const triageResult     = document.getElementById('triage-result');
+const triageSpinner    = document.getElementById('triage-spinner');
+const triageAlert      = document.getElementById('triage-alert');
+const triageBtn        = document.getElementById('triage-btn');
+const triageText       = document.getElementById('triage-text');
+const lookupBtn        = document.getElementById('lookup-btn');
 const studentCodeInput = document.getElementById('student-code-input');
-const studentBadge  = document.getElementById('student-badge');
+const studentsList     = document.getElementById('students-list');
+const studentError     = document.getElementById('student-error');
 
-let _currentStudent = null; // { code, full_name, grade }
+let _students = []; // [{ code, full_name }]
 
 function checkTriageBtn() {
-  triageBtn.disabled = !_currentStudent || triageText.value.trim().length < 10;
+  triageBtn.disabled = _students.length === 0 || triageText.value.trim().length < 10;
+}
+
+function incidentPill(count) {
+  if (count === 0) return '<span class="repeat-pill new"><i class="fa-solid fa-check"></i> Sin antecedentes</span>';
+  if (count === 1) return '<span class="repeat-pill warn"><i class="fa-solid fa-triangle-exclamation"></i> 1 incidencia previa</span>';
+  return `<span class="repeat-pill danger"><i class="fa-solid fa-circle-exclamation"></i> ${count} incidencias previas</span>`;
+}
+
+function renderStudentBadges() {
+  if (!studentsList) return;
+  if (_students.length === 0) {
+    studentsList.innerHTML = '';
+    triageText.disabled = true;
+  } else {
+    studentsList.innerHTML = _students.map(s => `
+      <div class="student-badge-ok">
+        <i class="fa-solid fa-user-graduate"></i>
+        <strong>${s.full_name}</strong>
+        <span class="chip">${s.code}</span>
+        ${incidentPill(s.incident_count ?? 0)}
+        <button type="button" class="badge-remove" onclick="removeStudent('${s.code}')"><i class="fa-solid fa-xmark"></i></button>
+      </div>`).join('');
+    triageText.disabled = false;
+  }
+  checkTriageBtn();
+}
+
+function removeStudent(code) {
+  _students = _students.filter(s => s.code !== code);
+  renderStudentBadges();
 }
 
 async function lookupStudent() {
   const code = studentCodeInput.value.trim().toUpperCase();
   if (!code) return;
-  studentBadge.style.display = 'none';
-  studentBadge.innerHTML = '';
-  triageText.disabled = true;
-  _currentStudent = null;
-  checkTriageBtn();
+  if (studentError) { studentError.style.display = 'none'; studentError.innerHTML = ''; }
+
+  if (_students.find(s => s.code === code)) {
+    if (studentError) { studentError.style.display = 'block'; studentError.innerHTML = `<div class="student-badge-error"><i class="fa-solid fa-circle-exclamation"></i> ${code} ya está añadido</div>`; }
+    return;
+  }
 
   const res = await apiFetch(`/students/${code}`);
   if (!res) return;
   if (res.status === 404) {
-    studentBadge.style.display = 'block';
-    studentBadge.innerHTML = `<div class="student-badge-error"><i class="fa-solid fa-circle-xmark"></i> Código no encontrado</div>`;
+    if (studentError) { studentError.style.display = 'block'; studentError.innerHTML = `<div class="student-badge-error"><i class="fa-solid fa-circle-xmark"></i> Código no encontrado</div>`; }
     return;
   }
   const student = await res.json();
-  _currentStudent = student;
-  studentBadge.style.display = 'block';
-  studentBadge.innerHTML = `<div class="student-badge-ok">
-    <i class="fa-solid fa-user-graduate"></i>
-    <strong>${student.full_name}</strong>
-    <span class="chip">${student.grade}</span>
-    <span class="chip">${student.code}</span>
-  </div>`;
-  triageText.disabled = false;
-  triageText.focus();
-  checkTriageBtn();
+  _students.push({ code: student.code, full_name: student.full_name, incident_count: student.incident_count ?? 0 });
+  studentCodeInput.value = '';
+  if (studentError) { studentError.style.display = 'none'; }
+  renderStudentBadges();
+  studentCodeInput.focus();
 }
 
 if (lookupBtn) {
@@ -298,10 +453,13 @@ if (lookupBtn) {
   triageForm.addEventListener('submit', async e => {
     e.preventDefault();
     const text = triageText.value.trim();
-    if (!_currentStudent) return;
+    if (_students.length === 0) return;
+
+    const codes = _students.map(s => s.code).join(',');
+    const names = _students.map(s => s.full_name).join(', ');
 
     _analyzeResults = {};
-    _analyzeCtx     = { student: _currentStudent.full_name, text, studentCode: _currentStudent.code };
+    _analyzeCtx     = { student: names, text, studentCode: codes };
     triageResult.innerHTML = '';
     triageAlert.className  = 'alert';
     triageSpinner.classList.add('visible');
@@ -310,11 +468,7 @@ if (lookupBtn) {
     try {
       const res = await apiFetch('/analyze', {
         method: 'POST',
-        body: JSON.stringify({
-          student_code: _currentStudent.code,
-          student_name: _currentStudent.full_name,
-          report_text: text,
-        }),
+        body: JSON.stringify({ student_code: codes, student_name: names, report_text: text }),
       });
       if (!res) return;
       const data = await res.json();
@@ -395,10 +549,16 @@ async function saveChosenResult(provider) {
   if (!res) return;
   const data = await res.json();
   if (data.success) {
-    triageResult.innerHTML = buildCard(
-      data.data, `Resultado — ${_analyzeCtx.student}`,
-      data.incident_id, data.student_history
-    );
+    showToast('Incidencia registrada correctamente', 'success');
+
+    // Reset form
+    _students = [];
+    renderStudentBadges();
+    if (studentCodeInput) studentCodeInput.value = '';
+    if (triageText)       triageText.value = '';
+    if (studentError)   { studentError.style.display = 'none'; studentError.innerHTML = ''; }
+    triageResult.innerHTML = '';
+    triageAlert.className  = 'alert';
   }
 }
 
@@ -459,14 +619,14 @@ function buildCard(result, title, incidentId = null, history = []) {
       <div class="redirect-inline-title"><i class="fa-solid fa-shuffle"></i> Redirigir clasificación</div>
       <div class="redirect-row">
         <select class="redirect-select" id="cr-dept-${incidentId}">
-          <option value="">— Mantener departamento —</option>
+          <option value="">- Mantener departamento -</option>
           <option value="tutoria">Tutoría</option>
           <option value="orientacion">Orientación</option>
           <option value="direccion">Dirección</option>
           <option value="servicios_externos">Servicios Externos</option>
         </select>
         <select class="redirect-select" id="cr-urg-${incidentId}">
-          <option value="">— Mantener urgencia —</option>
+          <option value="">- Mantener urgencia -</option>
           <option value="baja">● Baja</option>
           <option value="media">● Media</option>
           <option value="alta">● Alta</option>
@@ -595,7 +755,7 @@ function buildInboxCard(i) {
     <div class="inbox-card-head">
       <div>
         <div class="inbox-card-name"><i class="fa-solid fa-file-lines"></i> Incidencia #${i.id}</div>
-        <div class="inbox-card-meta">${cl} · ${date} · por ${i.reported_by ?? '—'}</div>
+        <div class="inbox-card-meta">${cl} · ${date} · por ${i.reported_by ?? '-'}</div>
       </div>
       <span class="urgency-badge badge-${u.cls}" style="font-size:.7rem">${u.icon} ${u.label}</span>
     </div>
@@ -608,24 +768,23 @@ function buildInboxCard(i) {
       <div class="inbox-detail-label">Departamento asignado</div>
       <div class="inbox-detail-text" id="icd-dept-${i.id}">${dl}</div>
       <div class="inbox-detail-label">Razonamiento IA</div>
-      <div class="inbox-detail-text">${i.reasoning ?? '—'}</div>
+      <div class="inbox-detail-text">${i.reasoning ?? '-'}</div>
       <div class="inbox-detail-actions">
-        <button class="btn btn-primary btn-sm" onclick="confirmIncident(${i.id}, this)"><i class="fa-solid fa-check"></i> Confirmar</button>
+        <button class="btn btn-primary btn-sm" onclick="toggleInboxFollowup(${i.id})"><i class="fa-solid fa-calendar-plus"></i> Agendar cita</button>
         <button class="btn btn-outline btn-sm" onclick="toggleInboxRedirect(${i.id})"><i class="fa-solid fa-shuffle"></i> Redirigir</button>
-        <button class="btn btn-ghost   btn-sm" onclick="toggleInboxFollowup(${i.id})"><i class="fa-solid fa-calendar-plus"></i> Agendar cita</button>
       </div>
       <div id="inbox-redirect-${i.id}" class="redirect-inline" style="display:none;margin-top:10px;border-radius:var(--radius-sm)">
         <div class="redirect-inline-title"><i class="fa-solid fa-shuffle"></i> Redirigir a otro departamento</div>
         <div class="redirect-row">
           <select class="redirect-select" id="ir-dept-${i.id}">
-            <option value="">— Nuevo departamento —</option>
+            <option value="">- Nuevo departamento -</option>
             <option value="tutoria">Tutoría</option>
             <option value="orientacion">Orientación</option>
             <option value="direccion">Dirección</option>
             <option value="servicios_externos">Servicios Externos</option>
           </select>
           <select class="redirect-select" id="ir-urg-${i.id}">
-            <option value="">— Mantener urgencia —</option>
+            <option value="">- Mantener urgencia -</option>
             <option value="baja">● Baja</option>
             <option value="media">● Media</option>
             <option value="alta">● Alta</option>
@@ -641,6 +800,7 @@ function buildInboxCard(i) {
         <h5>Agendar cita</h5>
         <div class="form-row">
           <input type="date" id="if-date-${i.id}" min="${new Date().toISOString().split('T')[0]}" />
+          <input type="time" id="if-time-${i.id}" value="09:00" />
           <input type="text" id="if-notes-${i.id}" placeholder="Motivo de la cita..." style="flex:1;min-width:140px" />
           <button class="btn btn-primary" onclick="saveFollowupFromInbox(${i.id})">Guardar</button>
         </div>
@@ -692,17 +852,20 @@ async function submitInboxRedirect(id) {
 
 async function saveFollowupFromInbox(incidentId) {
   const date  = document.getElementById(`if-date-${incidentId}`).value;
+  const time  = document.getElementById(`if-time-${incidentId}`).value || '09:00';
   const notes = document.getElementById(`if-notes-${incidentId}`).value;
   if (!date) { showToast('Selecciona una fecha', 'error'); return; }
 
   const res = await apiFetch('/calendar', {
     method: 'POST',
-    body: JSON.stringify({ incident_id: incidentId, scheduled_date: date + 'T09:00:00', notes }),
+    body: JSON.stringify({ incident_id: incidentId, scheduled_date: `${date}T${time}:00`, notes }),
   });
   if (!res) return;
   if (res.ok) {
     document.getElementById(`inbox-followup-${incidentId}`).style.display = 'none';
-    showToast('Cita agendada correctamente');
+    showToast('Cita agendada. Aparecerá en la Agenda para confirmar.');
+    const card = document.getElementById(`ic-${incidentId}`);
+    if (card) card.style.opacity = '.6';
   }
 }
 
@@ -732,7 +895,7 @@ async function loadIncidents() {
 
     const actionBtn = canAct
       ? `<button class="btn-redirect" onclick="toggleRedirect(${i.id})"><i class="fa-solid fa-shuffle"></i></button>`
-      : '—';
+      : '-';
 
     rows.push(`<tr id="inc-row-${i.id}">
       <td>${i.id}</td>
@@ -740,7 +903,7 @@ async function loadIncidents() {
       <td><span class="history-urgency" style="background:${u.bg}">${i.urgency_level}</span></td>
       <td id="inc-dept-${i.id}">${dl}</td>
       <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${i.summary}">${i.summary}</td>
-      <td>${i.reported_by ?? '—'}</td>
+      <td>${i.reported_by ?? '-'}</td>
       <td>${date}</td>
       <td id="inc-badge-${i.id}">${badge}</td>
       <td>${actionBtn}</td>
@@ -753,14 +916,14 @@ async function loadIncidents() {
             <div class="redirect-inline-title"><i class="fa-solid fa-shuffle"></i> Redirigir incidencia #${i.id}</div>
             <div class="redirect-row">
               <select class="redirect-select" id="rd-dept-${i.id}">
-                <option value="">— Mantener departamento —</option>
+                <option value="">- Mantener departamento -</option>
                 <option value="tutoria">Tutoría</option>
                 <option value="orientacion">Orientación</option>
                 <option value="direccion">Dirección</option>
                 <option value="servicios_externos">Servicios Externos</option>
               </select>
               <select class="redirect-select" id="rd-urg-${i.id}">
-                <option value="">— Mantener urgencia —</option>
+                <option value="">- Mantener urgencia -</option>
                 <option value="baja">● Baja</option>
                 <option value="media">● Media</option>
                 <option value="alta">● Alta</option>
@@ -811,32 +974,181 @@ async function submitRedirect(id) {
 }
 
 // ── Calendar ──────────────────────────────────────────────
+let _calYear  = new Date().getFullYear();
+let _calMonth = new Date().getMonth();
+let _calData  = [];
+
 async function loadCalendar() {
   const list = document.getElementById('calendar-list');
   list.innerHTML = '<p style="color:var(--gray-400)">Cargando...</p>';
   const res = await apiFetch('/calendar');
   if (!res) return;
-  const data = await res.json();
-  if (!data.length) {
-    list.innerHTML = '<p style="color:var(--gray-400)">No hay seguimientos agendados.</p>';
-    return;
+  _calData = await res.json();
+  renderCalendar();
+}
+
+function calPrevMonth() { _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; } renderCalendar(); }
+function calNextMonth() { _calMonth++; if (_calMonth > 11) { _calMonth = 0;  _calYear++; } renderCalendar(); }
+
+function renderCalendar() {
+  const label = document.getElementById('cal-month-label');
+  if (label) {
+    const name = new Date(_calYear, _calMonth, 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' });
+    label.textContent = name.charAt(0).toUpperCase() + name.slice(1);
   }
-  list.innerHTML = data.map(f => {
-    const d   = new Date(f.scheduled_date);
-    const day = d.getDate().toString().padStart(2, '0');
-    const mon = d.toLocaleString('es-ES', { month: 'short' }).toUpperCase();
-    const u   = URGENCY[f.urgency_level] ?? URGENCY.baja;
-    return `<div class="followup-item">
-      <div class="followup-date-box"><div class="fday">${day}</div><div class="fmonth">${mon}</div></div>
-      <div class="followup-info" style="flex:1">
-        <div class="fi-title">Incidencia #${f.incident_id}
-          <span class="urgency-badge badge-${u.cls}" style="font-size:.65rem;margin-left:6px">${u.icon} ${u.label}</span>
-        </div>
-        <div class="fi-notes">${f.notes || 'Sin notas adicionales'}</div>
-        <div class="fi-meta">Agendado por ${f.created_by} · ${deptLabel(f.department)}</div>
-      </div>
+
+  const firstDow = (new Date(_calYear, _calMonth, 1).getDay() + 6) % 7; // Mon=0
+  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+  const today = new Date();
+
+  // Build day → events map
+  const dayMap = {};
+  _calData.forEach(f => {
+    const d = new Date(f.scheduled_date);
+    if (d.getFullYear() === _calYear && d.getMonth() === _calMonth) {
+      const day = d.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      dayMap[day].push(f);
+    }
+  });
+
+  const days = ['L','M','X','J','V','S','D'];
+  let html = '<div class="cal-grid">';
+  days.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
+
+  for (let i = 0; i < firstDow; i++) html += '<div class="cal-cell cal-empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = today.getFullYear() === _calYear && today.getMonth() === _calMonth && today.getDate() === d;
+    const events  = dayMap[d] || [];
+    html += `<div class="cal-cell${isToday ? ' cal-today' : ''}">
+      <div class="cal-day-num">${d}</div>
+      ${events.map(f => buildCalEvent(f)).join('')}
     </div>`;
-  }).join('');
+  }
+  html += '</div>';
+
+  const list = document.getElementById('calendar-list');
+  if (list) list.innerHTML = html;
+}
+
+function buildCalEvent(f) {
+  const u    = URGENCY[f.urgency_level] ?? URGENCY.baja;
+  const dt   = new Date(f.scheduled_date);
+  const time = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const dateVal = dt.toISOString().slice(0, 10);
+  const timeVal = dt.toTimeString().slice(0, 5);
+  const name = f.student_name ? `<span style="font-weight:600">${f.student_name.split(',')[0]}</span> · ` : '';
+  const confirmBtn = !f.incident_confirmed
+    ? `<button class="cal-confirm-btn" onclick="calConfirm(${f.incident_id}, this)"><i class="fa-solid fa-check"></i> Confirmar</button>`
+    : `<span class="cal-confirmed-tag"><i class="fa-solid fa-check-circle"></i> Confirmada por ${f.confirmed_by || f.created_by || '-'}</span>`;
+  return `<div class="cal-event u-${u.cls}" id="calevent-${f.id}">
+    <div class="cal-event-time">
+      ${time} ${u.icon}
+      <button class="cal-edit-btn" onclick="toggleCalEdit(${f.id})" title="Editar cita"><i class="fa-solid fa-pencil"></i></button>
+    </div>
+    <div class="cal-event-body">${name}${f.notes || 'Sin motivo'}</div>
+    ${confirmBtn}
+    <div class="cal-edit-form" id="caledit-${f.id}" style="display:none">
+      <input type="date" id="caledit-date-${f.id}" value="${dateVal}" />
+      <input type="time" id="caledit-time-${f.id}" value="${timeVal}" />
+      <input type="text" id="caledit-notes-${f.id}" value="${(f.notes || '').replace(/"/g, '&quot;')}" placeholder="Motivo..." />
+      <div class="cal-edit-actions">
+        <button class="cal-edit-save" onclick="saveCalEdit(${f.id})"><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+        <button class="cal-edit-cancel" onclick="toggleCalEdit(${f.id})">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCalEdit(fid) {
+  const el = document.getElementById(`caledit-${fid}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveCalEdit(fid) {
+  const date  = document.getElementById(`caledit-date-${fid}`).value;
+  const time  = document.getElementById(`caledit-time-${fid}`).value || '09:00';
+  const notes = document.getElementById(`caledit-notes-${fid}`).value;
+  if (!date) { showToast('Selecciona una fecha', 'error'); return; }
+
+  const res = await apiFetch(`/calendar/${fid}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ scheduled_date: `${date}T${time}:00`, notes }),
+  });
+  if (!res) return;
+  if (res.ok) {
+    const updated = await res.json();
+    const idx = _calData.findIndex(f => f.id === fid);
+    if (idx !== -1) _calData[idx] = updated;
+    renderCalendar();
+    showToast('Cita actualizada');
+  } else {
+    showToast('Error al guardar', 'error');
+  }
+}
+
+async function calConfirm(incidentId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  const res = await apiFetch(`/incidents/${incidentId}/confirm`, { method: 'PATCH' });
+  if (!res) { btn.disabled = false; return; }
+  const data = await res.json();
+  if (data.success) {
+    showToast('Incidencia confirmada');
+    const who = userName();
+    _calData = _calData.map(f =>
+      f.incident_id === incidentId ? { ...f, incident_confirmed: true, confirmed_by: who } : f
+    );
+    renderCalendar();
+  }
+}
+
+// ── Avatar picker ──────────────────────────────────────────
+const AVATAR_ICONS = [
+  'fa-book-open', 'fa-graduation-cap', 'fa-chalkboard', 'fa-pencil',
+  'fa-globe', 'fa-microscope', 'fa-school', 'fa-bus', 'fa-trophy',
+  'fa-calculator', 'fa-medal', 'fa-ruler', 'fa-flask', 'fa-music',
+  'fa-palette', 'fa-atom', 'fa-compass', 'fa-apple-whole',
+];
+
+function renderAvatarPicker(current) {
+  const picker = document.getElementById('avatar-picker');
+  if (!picker) return;
+  picker.innerHTML = AVATAR_ICONS.map(icon => `
+    <button class="avatar-opt${current === icon ? ' selected' : ''}" onclick="selectAvatar('${icon}')" title="${icon}">
+      <i class="fa-solid ${icon}"></i>
+    </button>`).join('');
+}
+
+async function selectAvatar(icon) {
+  const res = await apiFetch('/profile/avatar', {
+    method: 'PATCH',
+    body: JSON.stringify({ avatar_icon: icon }),
+  });
+  if (!res || !res.ok) { showToast('Error al guardar avatar', 'error'); return; }
+
+  localStorage.setItem('avatar_icon', icon);
+
+  // Update sidebar
+  const avatarEl = document.getElementById('user-avatar');
+  avatarEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+  avatarEl.classList.add('has-icon');
+
+  // Update profile large avatar
+  const lgEl = document.getElementById('profile-avatar-lg');
+  if (lgEl) {
+    lgEl.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+    lgEl.classList.add('has-icon');
+  }
+
+  // Update picker selected state
+  document.querySelectorAll('.avatar-opt').forEach(btn => btn.classList.remove('selected'));
+  document.querySelectorAll('.avatar-opt').forEach(btn => {
+    if (btn.querySelector('i')?.classList.contains(icon)) btn.classList.add('selected');
+  });
+
+  showToast('Avatar actualizado');
 }
 
 // ── Profile ───────────────────────────────────────────────
@@ -862,6 +1174,118 @@ async function loadProfile() {
   const lnEl = document.getElementById('ps-last-name');
   if (fnEl) fnEl.value = p.first_name || '';
   if (lnEl) lnEl.value = p.last_name  || '';
+
+  // Load avatar
+  localStorage.setItem('avatar_icon', p.avatar_icon || '');
+  renderAvatarPicker(p.avatar_icon || '');
+  const lgEl = document.getElementById('profile-avatar-lg');
+  if (p.avatar_icon) {
+    lgEl.innerHTML = `<i class="fa-solid ${p.avatar_icon}"></i>`;
+    lgEl.classList.add('has-icon');
+  }
+
+  // Show contacts section for servicios_externos
+  const contactsSection = document.getElementById('contacts-section');
+  if (contactsSection && (p.department === 'servicios_externos' || p.role === 'externo')) {
+    contactsSection.style.display = '';
+    const head = contactsSection.querySelector('.profile-section-head');
+    const body = contactsSection.querySelector('.profile-section-body');
+    if (head) head.classList.add('open');
+    if (body) body.classList.add('open');
+    loadContacts();
+  }
+}
+
+// ── External Contacts ─────────────────────────────────────
+
+const QUICK_CONTACTS = [
+  { label: 'Policía Nacional',      phone: '091' },
+  { label: 'Policía Local',         phone: '092' },
+  { label: 'Emergencias',           phone: '112' },
+  { label: 'Servicios Sociales',    phone: '900 20 11 20' },
+  { label: 'Salud Mental Infanto-Juvenil', phone: '024' },
+  { label: 'Línea de Atención a Menores',  phone: '116 111' },
+];
+
+async function loadContacts() {
+  const res = await apiFetch('/contacts');
+  if (!res) return;
+  const data = await res.json();
+  renderContacts(data);
+}
+
+function renderContacts(contacts) {
+  const list = document.getElementById('contacts-list');
+  if (!contacts.length) {
+    list.innerHTML = '<p style="font-size:.83rem;color:var(--gray-400);margin-bottom:12px">No hay contactos guardados aún.</p>';
+  } else {
+    list.innerHTML = contacts.map(c => `
+      <div class="contact-card" id="contact-${c.id}">
+        <div class="contact-icon"><i class="fa-solid fa-phone"></i></div>
+        <div class="contact-info">
+          <div class="contact-label">${c.label}</div>
+          ${c.notes ? `<div class="contact-notes">${c.notes}</div>` : ''}
+        </div>
+        <a class="contact-call" href="tel:${c.phone}"><i class="fa-solid fa-phone-volume"></i> ${c.phone}</a>
+        <button class="contact-del" onclick="deleteContact(${c.id})" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+      </div>`).join('');
+  }
+
+  // Show quick-add suggestions for contacts not yet saved
+  const saved = contacts.map(c => c.label.toLowerCase());
+  const missing = QUICK_CONTACTS.filter(q => !saved.includes(q.label.toLowerCase()));
+  const sug = document.getElementById('contacts-quick-suggestions');
+  if (missing.length) {
+    sug.innerHTML = `<div class="contacts-quick-title">Sugerencias rápidas</div>` +
+      missing.map(q =>
+        `<button class="contact-quick-btn" onclick="quickAddContact('${q.label.replace(/'/g,"\\'")}','${q.phone}')">
+          <i class="fa-solid fa-plus"></i> ${q.label} <span>${q.phone}</span>
+        </button>`
+      ).join('');
+  } else {
+    sug.innerHTML = '';
+  }
+}
+
+async function addContact() {
+  const label = document.getElementById('ct-label').value.trim();
+  const phone = document.getElementById('ct-phone').value.trim();
+  const notes = document.getElementById('ct-notes').value.trim();
+  if (!label || !phone) { showToast('Nombre y teléfono son obligatorios', 'error'); return; }
+  const res = await apiFetch('/contacts', {
+    method: 'POST',
+    body: JSON.stringify({ label, phone, notes }),
+  });
+  if (!res) return;
+  if (res.ok) {
+    document.getElementById('ct-label').value = '';
+    document.getElementById('ct-phone').value = '';
+    document.getElementById('ct-notes').value = '';
+    loadContacts();
+    showToast('Contacto añadido');
+  } else {
+    const err = await res.json();
+    showToast(err.detail || 'Error al añadir contacto', 'error');
+  }
+}
+
+async function quickAddContact(label, phone) {
+  const res = await apiFetch('/contacts', {
+    method: 'POST',
+    body: JSON.stringify({ label, phone, notes: '' }),
+  });
+  if (!res) return;
+  if (res.ok) { loadContacts(); showToast(`${label} añadido`); }
+}
+
+async function deleteContact(id) {
+  const res = await apiFetch(`/contacts/${id}`, { method: 'DELETE' });
+  if (!res) return;
+  if (res.status === 204 || res.ok) {
+    document.getElementById(`contact-${id}`)?.remove();
+    loadContacts();
+    showToast('Contacto eliminado');
+  }
 }
 
 async function submitChangeName() {
@@ -1043,17 +1467,17 @@ function renderAdminUsers() {
     return;
   }
   tbody.innerHTML = _adminUsers.map(u => {
-    const date    = u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES') : '—';
+    const date    = u.created_at ? new Date(u.created_at).toLocaleDateString('es-ES') : '-';
     const actions = u.role === 'admin'
       ? '<span style="color:var(--gray-400);font-size:.75rem">Admin</span>'
       : `<button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(${u.id}, '${(u.name || '').replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i> Eliminar</button>`;
     return `<tr id="user-row-${u.id}">
       <td>${u.id}</td>
-      <td class="td-name">${u.name || '—'}</td>
-      <td style="font-size:.8rem">${u.email || '—'}</td>
+      <td class="td-name">${u.name || '-'}</td>
+      <td style="font-size:.8rem">${u.email || '-'}</td>
       <td><span class="pi-badge">${rolLabel(u.role)}</span></td>
       <td>${deptLabel(u.department)}</td>
-      <td>${u.institution_name ?? '—'}</td>
+      <td>${u.institution_name ?? '-'}</td>
       <td style="font-size:.75rem;color:var(--gray-400)">${date}</td>
       <td id="user-act-${u.id}">${actions}</td>
     </tr>`;
@@ -1132,7 +1556,7 @@ async function submitInviteAdmin() {
   if (!res) return;
   const data = await res.json();
   if (res.ok) {
-    showToast(`Administrador creado — invitación enviada a ${email}`);
+    showToast(`Administrador creado - invitación enviada a ${email}`);
     document.getElementById('inv-first').value = '';
     document.getElementById('inv-last').value  = '';
     document.getElementById('inv-email').value = '';
@@ -1201,15 +1625,4 @@ function showToast(msg, type = 'success') {
   el.classList.add('show');
   if (_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
-}
-
-// ── Status ────────────────────────────────────────────────
-async function checkStatus() {
-  const dot = document.getElementById('status-dot');
-  const txt = document.getElementById('status-text');
-  try {
-    const r = await fetch(`${API}/health`);
-    if (r.ok) { dot.className = 'status-dot online';  txt.textContent = 'Backend activo'; }
-    else throw 0;
-  } catch { dot.className = 'status-dot offline'; txt.textContent = 'Sin conexión'; }
 }
