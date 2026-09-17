@@ -37,7 +37,7 @@
 
 ## Video demo
 
-https://youtu.be/UmjMoZTNVYI
+[![Video demo de ReAct Education](https://img.youtube.com/vi/UmjMoZTNVYI/maxresdefault.jpg)](https://youtu.be/UmjMoZTNVYI)
 
 
 
