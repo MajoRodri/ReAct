@@ -37,7 +37,9 @@
 
 ## Video demo
 
-https://github.com/user-attachments/assets/REPLACE_WITH_VIDEO_ASSET_ID
+https://youtu.be/UmjMoZTNVYI
+
+
 
 ---
 
